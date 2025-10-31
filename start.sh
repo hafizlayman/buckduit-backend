@@ -1,13 +1,10 @@
-#!/bin/bash
-# Combined startup for BuckDuit API + AI Core
-# Keeps both processes alive in Render's single service
-
+#!/usr/bin/env bash
 echo "============================================"
 echo "🚀 Starting BuckDuit API + AI Core Worker..."
 echo "============================================"
 
-# Start AI Core in background
-python buckduit_ai_core.py &
+# Run both Flask API + AI Core in background
+python -u buckduit_ai_core.py &
 
-# Start Flask API using Gunicorn on Render's assigned port
-gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+# Start Flask API using gunicorn safely
+python -m gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 0
