@@ -1,0 +1,9 @@
+Flask==3.0.3
+python-dotenv==1.0.1
+supabase==1.0.3
+supafunc==0.3.0
+gotrue==1.2.0
+postgrest==0.10.6
+realtime==1.0.0
+storage3==0.5.3
+python app.py
