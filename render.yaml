@@ -6,8 +6,8 @@ services:
     pythonVersion: 3.10
     buildCommand: |
       apt-get update && apt-get install -y bash
-      pip install --upgrade pip
-      pip install -r requirements.txt
+      pip install --upgrade pip setuptools wheel
+      pip install --no-cache-dir -r requirements.txt
       chmod +x start.sh
     startCommand: "./start.sh"
     autoDeploy: true
