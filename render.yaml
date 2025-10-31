@@ -3,8 +3,10 @@ services:
     name: buckduit-ai-core
     env: python
     plan: free
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "bash start.sh"
+    buildCommand: |
+      chmod +x start.sh
+      pip install -r requirements.txt
+    startCommand: "./start.sh"
     autoDeploy: true
     envVars:
       - key: SUPABASE_URL
