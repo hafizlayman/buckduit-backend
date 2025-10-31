@@ -6,4 +6,12 @@ realtime==1.0.0
 storage3==0.5.3
 requests
 openai
-gunicorn
+gunicornFlask==3.0.3
+python-dotenv==1.0.1
+supabase==2.3.0
+postgrest-py==0.16.6
+realtime==1.0.0
+storage3==0.5.3
+requests==2.31.0
+openai==1.51.0
+gunicorn==21.2.0
