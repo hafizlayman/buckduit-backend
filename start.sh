@@ -5,7 +5,7 @@ echo "======================================"
 echo "🚀 Starting BuckDuit API + AI Core Worker"
 echo "======================================"
 
-# --- Force install dependencies (even if Render skipped) ---
+# --- Force install dependencies ---
 echo "Installing project dependencies..."
 python -m ensurepip --upgrade
 pip install --upgrade pip setuptools wheel
