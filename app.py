@@ -4,32 +4,37 @@ from supabase import create_client, Client
 
 app = Flask(__name__)
 
-# ✅ Environment variables
+# Environment variables
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
-# ✅ Safety guard to catch missing keys cleanly
-if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-    print("❌ Missing Supabase credentials.")
-    @app.route("/")
-    def fail():
-        return jsonify({"error": "Supabase credentials missing"}), 500
+# Initialize Supabase client safely
+supabase: Client = None
+if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+        print("✅ Supabase client initialized successfully.")
+    except Exception as e:
+        print("❌ Failed to initialize Supabase:", str(e))
 else:
-    supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-    print("✅ Supabase client initialized successfully.")
+    print("⚠️ Missing Supabase credentials in environment.")
 
-    @app.route("/")
-    def root():
-        return jsonify({"message": "BuckDuit AI Core running."})
+@app.route("/")
+def home():
+    return jsonify({"message": "✅ BuckDuit AI Core backend is alive!"})
 
-    @app.route("/api/alerts/summary-card")
-    def summary_card():
-        try:
-            data = supabase.table("alerts").select("*").limit(5).execute()
-            return jsonify(data.data)
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+@app.route("/api/alerts/summary-card")
+def summary_card():
+    if not supabase:
+        return jsonify({"error": "Supabase client not initialized"}), 500
 
+    try:
+        # Example: fetch the latest 5 alerts
+        result = supabase.table("alerts").select("*").order("created_at", desc=True).limit(5).execute()
+        return jsonify(result.data)
+    except Exception as e:
+        print("❌ Error fetching alerts:", str(e))
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8080))
