@@ -3,3 +3,20 @@ gotrue==2.9.1
 postgrest==0.15.0
 storage3==0.5.3
 realtime==1.0.0
+# Core backend
+Flask==3.0.3
+gunicorn==23.0.0
+apscheduler==3.10.4
+python-dotenv==1.0.1
+requests==2.31.0
+
+# Supabase + dependencies
+supabase==2.3.6
+gotrue==2.9.1
+postgrest==0.15.0
+storage3==0.5.3
+realtime==1.0.0
+
+# Networking + utils
+httpx==0.24.1
+anyio==3.7.1
