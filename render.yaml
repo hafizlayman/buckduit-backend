@@ -1,24 +1,17 @@
 services:
   - type: web
     name: buckduit-ai-core
-    env: python
     plan: free
-
-    buildCommand: |
-      apt-get update && apt-get install -y bash
-      python -m pip install --upgrade pip setuptools wheel
-      python -m pip install --no-cache-dir -r requirements.txt
-      chmod +x start.sh
-
-    startCommand: bash ./start.sh
+    env: docker
     autoDeploy: true
-
     envVars:
       - key: SUPABASE_URL
         sync: false
-      - key: SUPABASE_SERVICE_KEY
+      - key: SUPABASE_KEY
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
         sync: false
       - key: OPENAI_API_KEY
         sync: false
-      - key: PYTHONUNBUFFERED
-        value: "true"
