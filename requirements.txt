@@ -1,6 +1,5 @@
-# Supabase stack (stable compatibility)
 supabase==2.3.6
 gotrue==2.9.1
-postgrest==0.16.11
+postgrest==0.15.0
 storage3==0.5.3
 realtime==1.0.0
