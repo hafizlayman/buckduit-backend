@@ -1,18 +1,18 @@
 # Core
-Flask==3.0.3
-gunicorn==23.0.0
-python-dotenv==1.0.1
-apscheduler==3.10.4
-requests==2.32.3
+Flask
+gunicorn
+python-dotenv
+apscheduler
+requests
 
-# Supabase SDK stack (safe versions)
-supabase==2.3.0
-gotrue==2.0.0
-postgrest==0.13.0
-storage3==0.5.3
-realtime==1.0.0
+# Supabase SDK stack
+supabase
+gotrue
+postgrest
+storage3
+realtime
 
 # Networking / async deps
-httpx==0.27.0
-anyio==4.4.0
-sniffio==1.3.0
+httpx
+anyio
+sniffio
