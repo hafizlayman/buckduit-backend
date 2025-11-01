@@ -1,10 +1,11 @@
 Flask==3.0.3
+flask-cors==4.0.0
 python-dotenv==1.0.1
 requests==2.31.0
 openai==1.51.0
 gunicorn==21.2.0
 
-# Supabase + deps (postgrest-py included internally)
+# Supabase + deps
 supabase>=2.3.0,<2.4.0
 realtime==1.0.0
 storage3==0.5.3
