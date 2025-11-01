@@ -1,19 +1,6 @@
-Flask==3.0.3
-flask-cors==4.0.0
-apscheduler==3.10.4
-python-dotenv==1.0.1
-requests==2.31.0
-openai==1.51.0
-gunicorn==21.2.0
-
-# Supabase + deps
-supabase>=2.3.0,<2.4.0
-realtime==1.0.0
+# Supabase stack (stable compatibility)
+supabase==2.3.6
+gotrue==2.9.1
+postgrest==0.16.11
 storage3==0.5.3
-
-# Networking layer
-httpx>=0.24.0,<0.26.0
-httpcore==0.17.0
-h11==0.14.0
-sniffio==1.3.0
-anyio==3.7.1
+realtime==1.0.0
