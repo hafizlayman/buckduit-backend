@@ -2,44 +2,44 @@ services:
   - type: web
     name: buckduit-backend
     env: python
-    region: singapore
-    plan: starter
-    autoDeploy: true
-    healthCheckPath: /api/health
-    buildCommand: ./start.sh build
-    startCommand: ./start.sh web
-    envVarGroups:
-      - buckduit-prod
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers=2 --threads=4 --timeout=120
+    envVars:
+      - key: SUPABASE_URL
+        value: https://lpdrdtjtowfhxujenewm.supabase.co
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_DEFAULT_CHAT_ID
+        sync: false
+      - key: TELEGRAM_ADMIN_CHAT_IDS
+        sync: false
+      - key: SERVICE_NAME
+        value: BuckDuit_AI_Core
+      - key: ENVIRONMENT
+        value: prod
+      - key: HEARTBEAT_TTL_SECONDS
+        value: "90"
+      - key: CHECK_INTERVAL_SECONDS
+        value: "30"
+      - key: HOST_LABEL
+        value: render-core-1
 
   - type: worker
-    name: buckduit-worker
+    name: buckduit-heartbeat
     env: python
-    region: singapore
-    plan: starter
-    autoDeploy: true
-    buildCommand: ./start.sh build
-    startCommand: ./start.sh worker
-    envVarGroups:
-      - buckduit-prod
-
-envVarGroups:
-  - name: buckduit-prod
+    buildCommand: pip install -r requirements.txt
+    startCommand: python heartbeat_sender.py
     envVars:
-      - key: PYTHONUNBUFFERED
-        value: "1"
-      - key: WEB_CONCURRENCY
-        value: "2"
-      - key: WORKER_RESTART_BACKOFF
-        value: "5"
-      - key: SUPABASE_URL
-        value: "<your-supabase-url>"
-      - key: SUPABASE_ANON_KEY
-        value: "<your-anon-key>"
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        value: "<your-service-role-key>"
-      - key: TELEGRAM_BOT_TOKEN
-        value: "<your-telegram-bot-token>"
-      - key: TELEGRAM_CHAT_ID
-        value: "<your-chat-id>"
-      - key: OPENAI_API_KEY
-        value: "<if-used>"
+      - fromService: buckduit-backend
+        name: env
+
+  - type: worker
+    name: buckduit-watchdog
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python watchdog_monitor.py
+    envVars:
+      - fromService: buckduit-backend
+        name: env
