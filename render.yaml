@@ -1,45 +1,23 @@
 services:
-  - type: web
-    name: buckduit-backend
+  - type: worker
+    name: buckduit-ai-core
     env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --workers=2 --threads=4 --timeout=120
+    startCommand: python buckduit_ai_core.py
+    plan: free
+    region: singapore
+    autoDeploy: true
     envVars:
-      - key: SUPABASE_URL
-        value: https://lpdrdtjtowfhxujenewm.supabase.co
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false
-      - key: TELEGRAM_BOT_TOKEN
-        sync: false
-      - key: TELEGRAM_DEFAULT_CHAT_ID
-        sync: false
-      - key: TELEGRAM_ADMIN_CHAT_IDS
-        sync: false
-      - key: SERVICE_NAME
-        value: BuckDuit_AI_Core
-      - key: ENVIRONMENT
-        value: prod
-      - key: HEARTBEAT_TTL_SECONDS
-        value: "90"
-      - key: CHECK_INTERVAL_SECONDS
+      - key: FLASK_ENV
+        value: production
+      - key: ALERT_CRON_MINUTES
         value: "30"
-      - key: HOST_LABEL
-        value: render-core-1
-
-  - type: worker
-    name: buckduit-heartbeat
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: python heartbeat_sender.py
-    envVars:
-      - fromService: buckduit-backend
-        name: env
-
-  - type: worker
-    name: buckduit-watchdog
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: python watchdog_monitor.py
-    envVars:
-      - fromService: buckduit-backend
-        name: env
+      - key: SUPABASE_URL
+        sync: true
+      - key: SUPABASE_SERVICE_KEY
+        sync: true
+      - key: PUBLIC_BASE_URL
+        sync: true
+      - key: TELEGRAM_BOT_TOKEN
+        sync: true
+      - key: TELEGRAM_CHAT_ID
+        sync: true
