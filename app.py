@@ -4,11 +4,9 @@ from supabase import create_client, Client
 
 app = Flask(__name__)
 
-# Environment variables
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
-# Initialize Supabase client safely
 supabase: Client = None
 if SUPABASE_URL and SUPABASE_SERVICE_KEY:
     try:
@@ -27,9 +25,7 @@ def home():
 def summary_card():
     if not supabase:
         return jsonify({"error": "Supabase client not initialized"}), 500
-
     try:
-        # Example: fetch the latest 5 alerts
         result = supabase.table("alerts").select("*").order("created_at", desc=True).limit(5).execute()
         return jsonify(result.data)
     except Exception as e:
