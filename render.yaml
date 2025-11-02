@@ -7,10 +7,6 @@ services:
     region: singapore
     autoDeploy: true
     envVars:
-      - key: FLASK_ENV
-        value: production
-      - key: ALERT_CRON_MINUTES
-        value: "30"
       - key: SUPABASE_URL
         sync: true
       - key: SUPABASE_SERVICE_KEY
