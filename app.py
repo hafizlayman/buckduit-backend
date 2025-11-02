@@ -1,37 +1,23 @@
-import os
-from flask import Flask, jsonify
 from supabase import create_client, Client
+import os
 
-app = Flask(__name__)
-
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
-
-supabase: Client = None
-if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+# --- Safe, universal Supabase initializer ---
+def init_supabase() -> Client:
+    url = os.getenv("SUPABASE_URL")
+    key = (
+        os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        or os.getenv("SUPABASE_KEY")
+        or os.getenv("SUPABASE_ANON_KEY")
+    )
+    if not url or not key:
+        print("❌ Supabase not initialized — missing URL or Key")
+        return None
     try:
-        supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+        client = create_client(url, key)
         print("✅ Supabase client initialized successfully.")
+        return client
     except Exception as e:
-        print("❌ Failed to initialize Supabase:", str(e))
-else:
-    print("⚠️ Missing Supabase credentials in environment.")
+        print(f"❌ Supabase init error: {e}")
+        return None
 
-@app.route("/")
-def home():
-    return jsonify({"message": "✅ BuckDuit AI Core backend is alive!"})
-
-@app.route("/api/alerts/summary-card")
-def summary_card():
-    if not supabase:
-        return jsonify({"error": "Supabase client not initialized"}), 500
-    try:
-        result = supabase.table("alerts").select("*").order("created_at", desc=True).limit(5).execute()
-        return jsonify(result.data)
-    except Exception as e:
-        print("❌ Error fetching alerts:", str(e))
-        return jsonify({"error": str(e)}), 500
-
-if __name__ == "__main__":
-    port = int(os.getenv("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+supabase = init_supabase()
