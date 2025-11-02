@@ -1,7 +1,5 @@
-Flask==3.0.3
-Flask-Cors==4.0.1
-supabase==2.3.5
-python-dotenv>=1.0.0
-gunicorn>=21
-requests>=2
-python-dotenv>=1
+Flask==3.0.0
+supabase-py==2.3.4
+python-dotenv==1.0.1
+requests==2.31.0
+openai==1.12.0
