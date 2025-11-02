@@ -1,18 +1,4 @@
 services:
-  buckduit-api:
-    envs:
-      - SUPABASE_URL
-      - SUPABASE_SERVICE_KEY
-      - SUPABASE_TABLE
-      - TELEGRAM_BOT_TOKEN
-      - TELEGRAM_CHAT_ID
-      - OPENAI_API_KEY
-      - PORT
-      - FLASK_ENV
-    startCommand: ./start.sh web
-    autoDeploy: true
-    restartPolicyType: always
-
   buckduit-ai-core:
     envs:
       - SUPABASE_URL
@@ -20,6 +6,8 @@ services:
       - TELEGRAM_BOT_TOKEN
       - TELEGRAM_CHAT_ID
       - OPENAI_API_KEY
-    startCommand: ./start.sh worker
+      - FLASK_ENV
+      - PORT
+    startCommand: python buckduit_ai_core.py
     autoDeploy: true
     restartPolicyType: always
