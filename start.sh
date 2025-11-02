@@ -1,9 +1,39 @@
-#!/bin/bash
-echo "🚀 Starting BuckDuit AI Core..."
-export PORT=${PORT:-8080}
+#!/usr/bin/env bash
+set -euo pipefail
+cmd="${1:-}"
 
-# Wait for envs to load
-sleep 2
+build() {
+  echo "[build] Installing requirements..."
+  pip install --upgrade pip setuptools wheel
+  pip install -r requirements.txt
+  echo "[build] Done."
+}
 
-# Start Flask app through Gunicorn
-exec gunicorn --workers=1 --timeout 120 --bind 0.0.0.0:$PORT buckduit_ai_core:app
+run_web() {
+  : "${PORT:?Render did not set PORT}"
+  echo "[web] Starting Gunicorn on port ${PORT}"
+  exec gunicorn app:app \
+    --bind 0.0.0.0:"${PORT}" \
+    --workers "${WEB_CONCURRENCY:-2}" \
+    --timeout 120
+}
+
+run_worker() {
+  local backoff="${WORKER_RESTART_BACKOFF:-5}"
+  echo "[worker] Auto-restart loop (backoff ${backoff}s)"
+  while true; do
+    set +e
+    python buckduit_ai_core.py
+    status=$?
+    set -e
+    echo "[worker] Exited with ${status}. Restarting in ${backoff}s…"
+    sleep "${backoff}"
+  done
+}
+
+case "${cmd}" in
+  build)  build ;;
+  web)    run_web ;;
+  worker) run_worker ;;
+  *) echo "Usage: $0 {build|web|worker}" && exit 64 ;;
+esac

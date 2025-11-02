@@ -1,86 +1,45 @@
 services:
-  # ==========================
-  # 🧠 MAIN WEB SERVICE
-  # ==========================
   - type: web
-    name: buckduit-ai-core
+    name: buckduit-backend
     env: python
     region: singapore
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn -b 0.0.0.0:8080 app:app
-    healthCheckPath: /
-    plan: free
+    plan: starter
     autoDeploy: true
+    healthCheckPath: /api/health
+    buildCommand: ./start.sh build
+    startCommand: ./start.sh web
+    envVarGroups:
+      - buckduit-prod
 
-    envVars:
-      - key: SUPABASE_URL
-        value: https://lpdrdtjtowfhxujenewm.supabase.co
-      - key: SUPABASE_SERVICE_KEY
-        sync: false
-      - key: TELEGRAM_BOT_TOKEN
-        sync: false
-      - key: TELEGRAM_CHAT_ID
-        sync: false
-      - key: PORT
-        value: 8080
-      - key: FLASK_ENV
-        value: production
-
-    scaling:
-      minInstances: 1
-      maxInstances: 1
-
-    disk:
-      name: cache
-      mountPath: /data
-      sizeGB: 1
-
-    alerts:
-      - rule: deploy-failed
-        threshold: 1
-        action: notify
-      - rule: restart-failed
-        threshold: 1
-        action: notify
-
-  # ==========================
-  # ⚙️ BACKGROUND WORKER
-  # ==========================
   - type: worker
-    name: buckduit-ai-core-worker
+    name: buckduit-worker
     env: python
     region: singapore
-    buildCommand: pip install -r requirements.txt
-    startCommand: python buckduit_ai_core.py
-    plan: free
+    plan: starter
     autoDeploy: true
+    buildCommand: ./start.sh build
+    startCommand: ./start.sh worker
+    envVarGroups:
+      - buckduit-prod
 
+envVarGroups:
+  - name: buckduit-prod
     envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: WEB_CONCURRENCY
+        value: "2"
+      - key: WORKER_RESTART_BACKOFF
+        value: "5"
       - key: SUPABASE_URL
-        value: https://lpdrdtjtowfhxujenewm.supabase.co
-      - key: SUPABASE_SERVICE_KEY
-        sync: false
+        value: "<your-supabase-url>"
+      - key: SUPABASE_ANON_KEY
+        value: "<your-anon-key>"
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        value: "<your-service-role-key>"
       - key: TELEGRAM_BOT_TOKEN
-        sync: false
+        value: "<your-telegram-bot-token>"
       - key: TELEGRAM_CHAT_ID
-        sync: false
-      - key: FLASK_ENV
-        value: production
-
-    scaling:
-      minInstances: 1
-      maxInstances: 1
-
-  # ==========================
-  # 🔁 AUTO-HEAL CRON (30 min)
-  # ==========================
-  - type: cron
-    name: auto-restart-ai-core
-    env: python
-    schedule: "*/30 * * * *"
-    buildCommand: ""
-    startCommand: |
-      echo "Restarting buckduit-ai-core via Render cron job..."
-      curl -X POST https://api.render.com/v1/services/$RENDER_SERVICE_ID/redeploy \
-        -H "Authorization: Bearer $RENDER_API_KEY"
-    plan: free
+        value: "<your-chat-id>"
+      - key: OPENAI_API_KEY
+        value: "<if-used>"
