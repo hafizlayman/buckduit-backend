@@ -1,12 +1,7 @@
-# ---- Flask core ----
 flask==3.0.3
 flask-cors==4.0.0
 gunicorn==21.2.0
 python-dotenv==1.0.1
-
-# ---- Supabase client (v2, stable) ----
-supabase==2.4.0
-
-# ---- External APIs ----
+supabase==2.4.3
+httpx==0.27.0
 requests==2.31.0
-openai==1.12.0
