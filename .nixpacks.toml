@@ -1,8 +1,20 @@
+# Disable automatic Nixpacks build since we're using a Dockerfile
+build = false
+
+# Explicit environment setup (for safety)
 [phases.setup]
 nixPkgs = ["python310"]
 
+# Optional install phase (kept for safety if Railway ignores Dockerfile)
 [phases.install]
-cmds = ["pip install -r requirements.txt"]
+cmds = [
+  "pip install --no-cache-dir -r requirements.txt"
+]
 
+# Dummy build phase just to satisfy Railway logs
+[phases.build]
+cmds = ["echo Build phase complete"]
+
+# Start command (this will be ignored if Dockerfile is respected)
 [start]
 cmd = "python buckduit_ai_core.py"
