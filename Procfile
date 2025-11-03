@@ -1,2 +1,1 @@
-web: gunicorn app:app
-worker: python buckduit_ai_core.py
+web: gunicorn buckduit_ai_core:app --timeout 120 --preload

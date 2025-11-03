@@ -1,81 +1,81 @@
-# ==============================================================
-# 🩺 BuckDuit AI Core Health Endpoint
-# --------------------------------------------------------------
-# Purpose:
-#   Allows Railway + Health Monitor to verify uptime and status.
-#   Returns 200 OK when the service is healthy.
-# ==============================================================
-
-from flask import Flask, jsonify
 import os
+import time
+from flask import Flask, jsonify
 from supabase import create_client, Client
-from datetime import datetime, timezone
 
-# --------------------------------------------------------------
-# ✅ Initialize Flask app
-# --------------------------------------------------------------
+# ----------------------------------------------------------------
+# ✅ Initialize Flask
+# ----------------------------------------------------------------
 app = Flask(__name__)
 
-# --------------------------------------------------------------
-# 🧠 Load environment variables (used for validation)
-# --------------------------------------------------------------
+# ----------------------------------------------------------------
+# ✅ Load Supabase Configuration
+# ----------------------------------------------------------------
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
-# --------------------------------------------------------------
-# 🔗 Initialize Supabase client (optional — can be skipped if not needed)
-# --------------------------------------------------------------
-supabase: Client = None
-if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+    print("⚠️  Missing Supabase environment variables!")
+    supabase = None
+else:
     try:
-        supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-        print("✅ Supabase client initialized successfully for /health route")
+        supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+        print("✅ Supabase client initialized successfully.")
     except Exception as e:
-        print(f"⚠️ Warning: Supabase init failed in /health route — {e}")
+        print(f"❌ Failed to initialize Supabase client: {e}")
+        supabase = None
 
-# --------------------------------------------------------------
-# 🩺 HEALTH ENDPOINT
-# --------------------------------------------------------------
+# ----------------------------------------------------------------
+# ✅ Health Check Endpoint
+# ----------------------------------------------------------------
 @app.route("/health", methods=["GET"])
 def health_check():
+    """
+    Simple health endpoint used by Railway + Health Monitor.
+    """
     try:
-        # Optional: write a quick heartbeat log into your Supabase table
+        # Optional Supabase ping (lightweight check)
         if supabase:
-            supabase.table("ai_core_heartbeats").insert({
-                "service_name": "AI_CORE",
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            }).execute()
+            _ = supabase.table("ai_core_heartbeats").select("id").limit(1).execute()
 
-        # Return healthy response
         return jsonify({
-            "status": "UP",
+            "status": "ok",
             "service": "BuckDuit AI Core",
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "time": time.strftime("%Y-%m-%d %H:%M:%S"),
         }), 200
 
     except Exception as e:
-        print(f"❌ Health check failed: {e}")
         return jsonify({
-            "status": "DOWN",
-            "error": str(e),
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "status": "error",
+            "message": str(e),
         }), 500
 
-# --------------------------------------------------------------
-# 🏁 Root route (optional, helps check base connection)
-# --------------------------------------------------------------
+# ----------------------------------------------------------------
+# ✅ Root Endpoint (for manual test)
+# ----------------------------------------------------------------
 @app.route("/", methods=["GET"])
 def root():
     return jsonify({
-        "message": "🧠 BuckDuit AI Core Backend Running",
-        "status": "OK",
-        "time": datetime.now(timezone.utc).isoformat()
+        "message": "🚀 BuckDuit AI Core service is running!",
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
     }), 200
 
-# --------------------------------------------------------------
-# 🚀 Main entry point
-# --------------------------------------------------------------
+# ----------------------------------------------------------------
+# ✅ Background Worker Logic (optional placeholder)
+# ----------------------------------------------------------------
+def start_workers():
+    """
+    Placeholder for async/monitor threads.
+    You can safely start adaptive monitors, summary workers, etc.
+    """
+    print("🧠 Background workers ready... (placeholder)")
+    # Example:
+    # threading.Thread(target=summary_worker_loop, daemon=True).start()
+    # threading.Thread(target=adaptive_monitor_loop, daemon=True).start()
+
+# ----------------------------------------------------------------
+# ✅ Entrypoint
+# ----------------------------------------------------------------
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    print(f"🚀 Starting AI Core on port {port} ...")
-    app.run(host="0.0.0.0", port=port)
+    start_workers()
+    app.run(host="0.0.0.0", port=5000)
