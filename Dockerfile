@@ -1,19 +1,28 @@
-# Use official slim Python image
+# Use lightweight Python image
 FROM python:3.10-slim
 
-# Prevent Python from writing .pyc files
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+# Disable cache + speed up pip
+ENV PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_DEFAULT_TIMEOUT=100 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
-# Set working directory
+# Install basic system deps (fast)
+RUN apt-get update && apt-get install -y --no-install-recommends gcc build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-# Install dependencies in one layer for caching
+# Cache requirements first
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy only app files after dependencies
+# Upgrade pip and install deps with wheels where possible
+RUN pip install --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
+
+# Copy app files last (to reuse cached layer)
 COPY . .
 
-# Run AI Core worker
+# Start AI Core worker
 CMD ["python", "buckduit_ai_core.py"]
