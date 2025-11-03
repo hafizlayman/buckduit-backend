@@ -1,51 +1,76 @@
-import os, time, requests, datetime
+import os, time, socket, requests
+from datetime import datetime, timezone
 from supabase import create_client, Client
 
-# 🔧 Environment Variables
+# ---- Env
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
-PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL")
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-ALERT_CRON_MINUTES = int(os.getenv("ALERT_CRON_MINUTES", 30))
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+SERVICE_NAME = os.getenv("SERVICE_NAME", "BuckDuit_AI_Core")
+ENVIRONMENT = os.getenv("ENVIRONMENT", "prod")
+HOST_LABEL = os.getenv("HOST_LABEL", socket.gethostname())
+ALERT_CRON_MINUTES = int(os.getenv("ALERT_CRON_MINUTES", "30"))
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 
-# ✅ Initialize Supabase client
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-print("✅ Supabase client initialized successfully.")
+def sb() -> Client:
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        raise RuntimeError("Missing SUPABASE_URL or SUPABASE_SERVICE_KEY")
+    return create_client(SUPABASE_URL, SUPABASE_KEY)
 
-def send_telegram(msg: str):
-    """Send alert message to Telegram"""
+def tg_send(text: str):
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        print("⚠️ Telegram not configured; skipping send.")
+        return
     try:
-        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        requests.post(url, json={"chat_id": TELEGRAM_CHAT_ID, "text": msg})
-        print(f"📨 Telegram sent: {msg}")
+        requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+            json={"chat_id": TELEGRAM_CHAT_ID, "text": text},
+            timeout=10
+        )
+        print("📨 TG:", text)
     except Exception as e:
         print("❌ Telegram error:", e)
 
-def send_heartbeat():
-    """Insert new heartbeat row into Supabase"""
-    ts = datetime.datetime.utcnow().isoformat()
-    supabase.table("ai_core_heartbeats").insert({"timestamp": ts}).execute()
-    print(f"💓 Heartbeat at {ts}")
+def upsert_heartbeat():
+    now = datetime.now(timezone.utc).isoformat()
+    payload = {
+        "service_name": SERVICE_NAME,
+        "env": ENVIRONMENT,
+        "last_seen": now,
+        "current_status": "UP",
+        "meta": {"host": HOST_LABEL}
+    }
+    # composite unique key is (service_name, env) per earlier schema/policy
+    sb().table("ai_core_heartbeats").upsert(
+        payload, on_conflict="service_name,env"
+    ).execute()
+    print(f"💓 beat {now}")
 
-def monitor_backend():
-    """Ping backend /health route"""
+def check_backend_and_alert():
+    if not PUBLIC_BASE_URL:
+        return
     try:
-        resp = requests.get(f"{PUBLIC_BASE_URL}/health", timeout=10)
-        if resp.status_code == 200:
-            print("✅ Backend alive")
+        r = requests.get(f"{PUBLIC_BASE_URL}/health", timeout=10)
+        if r.status_code == 200:
+            print("✅ backend /health OK")
         else:
-            send_telegram("🚨 AI Core: Backend responded but not OK.")
+            tg_send(f"🚨 {SERVICE_NAME} ({ENVIRONMENT}) backend unhealthy: {r.status_code}")
     except Exception as e:
-        print("❌ Backend down:", e)
-        send_telegram("🚨 AI Core DOWN — backend unreachable.")
-
-def run_forever():
-    print("🧠 BuckDuit AI Core starting…")
-    while True:
-        send_heartbeat()
-        monitor_backend()
-        time.sleep(ALERT_CRON_MINUTES * 60)
+        print("❌ backend unreachable:", e)
+        tg_send(f"🚨 {SERVICE_NAME} ({ENVIRONMENT}) backend unreachable")
 
 if __name__ == "__main__":
-    run_forever()
+    print("🧠 AI Core worker booting…")
+    # quick sanity ping on startup
+    upsert_heartbeat()
+    check_backend_and_alert()
+    # steady-state loop
+    interval = max(60, ALERT_CRON_MINUTES * 60)  # at least 60s
+    while True:
+        try:
+            upsert_heartbeat()
+            check_backend_and_alert()
+        except Exception as e:
+            print("❌ loop error:", e)
+        time.sleep(interval)
