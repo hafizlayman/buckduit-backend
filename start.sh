@@ -1,52 +1,41 @@
 #!/bin/bash
-# ==============================================
-# 🚀 BuckDuit AI Core - Railway Production Launcher
-# ==============================================
-
 set -e
 
-echo "============================================="
-echo "🔧 Starting BuckDuit AI Core"
-echo "📦 Python Version: $(python3 --version)"
-echo "🌍 Working Directory: $(pwd)"
-echo "⚙️ PORT: ${PORT}"
-echo "============================================="
+echo "==========================================="
+echo "🚀 Launching BuckDuit AI Core (Production)"
+echo "==========================================="
 
-ls -la
+# Verify working directory
+echo "📂 Current directory: $(pwd)"
 
-# ✅ Safety: Change to correct directory if needed
-if [ -f "backend/buckduit_ai_core.py" ]; then
-  echo "📂 Switching to backend directory..."
-  cd backend
+# Verify Python version
+python --version
+
+# Environment check
+if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_KEY" ]; then
+  echo "⚠️  Warning: Missing Supabase environment variables!"
+  echo "SUPABASE_URL=$SUPABASE_URL"
+  echo "SUPABASE_SERVICE_KEY (first 10 chars): ${SUPABASE_SERVICE_KEY:0:10}..."
+else
+  echo "✅ Supabase variables detected."
 fi
 
-# ✅ Activate venv (optional)
-if [ -d "venv" ]; then
-  echo "✅ Activating virtual environment..."
-  source venv/bin/activate
-fi
-
+# Install dependencies
 echo "📦 Installing dependencies..."
 pip install --no-cache-dir -r requirements.txt
 
-echo "🧠 Checking Flask app..."
-python3 - <<'PYCODE'
-import importlib
-try:
-    m = importlib.import_module("buckduit_ai_core")
-    if hasattr(m, "app"):
-        print("✅ Flask app found: buckduit_ai_core.app")
-    else:
-        print("❌ Flask app missing inside buckduit_ai_core.py")
-except Exception as e:
-    print(f"❌ Import failed: {e}")
-PYCODE
+# Show all installed packages (optional debug)
+pip freeze | grep flask
+pip freeze | grep gunicorn
+pip freeze | grep supabase
 
-echo "🚀 Launching Gunicorn..."
+# Start Gunicorn server and bind to Railway port
+echo "🚀 Starting Gunicorn with buckduit_ai_core:app ..."
 exec gunicorn buckduit_ai_core:app \
-  --workers 1 \
+  --workers 2 \
   --threads 2 \
   --timeout 120 \
-  --bind 0.0.0.0:${PORT} \
-  --preload \
-  --log-level debug
+  --bind 0.0.0.0:${PORT:-8080} \
+  --log-level info \
+  --access-logfile '-' \
+  --error-logfile '-'
