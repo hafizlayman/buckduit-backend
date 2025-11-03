@@ -1,26 +1,29 @@
-# Use a lightweight Python base
+# ================================
+# 🧩 BuckDuit AI Core - Dockerfile
+# Production-ready Railway deployment
+# ================================
+
+# 1️⃣ Base image (lightweight + secure)
 FROM python:3.10-slim
 
-# Set working directory
+# 2️⃣ Set working directory
 WORKDIR /app
 
-# System dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirement files
-COPY requirements.txt .
-
-# ✅ Force clean install (ignore old cache)
-RUN pip install --upgrade pip setuptools wheel \
-    && pip install --no-cache-dir --force-reinstall -r requirements.txt
-
-# Copy everything else
+# 3️⃣ Copy all files
 COPY . .
 
-# Expose port 5000
-EXPOSE 5000
+# 4️⃣ Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Start app
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "app:app"]
+# 5️⃣ Environment variables
+# Railway will inject PORT dynamically (usually 8080)
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PORT=8080
+
+# 6️⃣ Health check (optional but recommended)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:${PORT}/health || exit 1
+
+# 7️⃣ Start the Gunicorn server
+CMD ["gunicorn", "buckduit_ai_core:app", "--workers", "2", "--threads", "2", "--timeout", "120", "--bind", "0.0.0.0:8080"]
