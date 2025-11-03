@@ -1,14 +1,19 @@
-# Use a minimal Python image
+# Use official slim Python image
 FROM python:3.10-slim
+
+# Prevent Python from writing .pyc files
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 # Set working directory
 WORKDIR /app
 
-# Copy project files
-COPY . /app
-
-# Install dependencies
+# Install dependencies in one layer for caching
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Command to run AI Core
+# Copy only app files after dependencies
+COPY . .
+
+# Run AI Core worker
 CMD ["python", "buckduit_ai_core.py"]
