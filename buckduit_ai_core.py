@@ -5,9 +5,6 @@ from supabase import create_client, Client
 
 app = Flask(__name__)
 
-# ----------------------------------------------------------------
-# ✅ Load Supabase configuration
-# ----------------------------------------------------------------
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
@@ -22,29 +19,30 @@ else:
         print(f"❌ Failed to initialize Supabase client: {e}")
         supabase = None
 
-# ----------------------------------------------------------------
-# ✅ Health check
-# ----------------------------------------------------------------
-@app.route("/health")
-def health():
+
+@app.route("/health", methods=["GET"])
+def health_check():
+    """Simple health endpoint used by Railway + monitor."""
     try:
         if supabase:
             supabase.table("ai_core_heartbeats").select("id").limit(1).execute()
         return jsonify({
             "status": "ok",
             "service": "BuckDuit AI Core",
-            "time": time.strftime("%Y-%m-%d %H:%M:%S"),
-        })
+            "time": time.strftime("%Y-%m-%d %H:%M:%S")
+        }), 200
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)}), 500
 
-@app.route("/")
+
+@app.route("/", methods=["GET"])
 def index():
     return jsonify({
         "message": "🚀 BuckDuit AI Core service is running!",
-        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-    })
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+    }), 200
+
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  # 👈 Railway injects PORT automatically
+    port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
