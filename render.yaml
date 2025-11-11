@@ -2,6 +2,8 @@
 # backend/render.yaml
 # Stage 14.11 — Web-Only API Deployment (Render)
 # =========================================
+# Deploys only the Flask backend (no worker yet)
+# =========================================
 
 services:
   - type: web
@@ -15,7 +17,6 @@ services:
     startCommand: gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT app:app
     healthCheckPath: /api/system/health
     autoDeploy: true
-    autoHeal: true
 
     envVars:
       # ---- App ----
