@@ -1,48 +1,21 @@
 #!/bin/sh
 set -e
 
-echo "🚀 BuckDuit — Stage 14.13.6 (Root Entrypoint Auto-Fix)"
-echo "📂 Current Directory:"
-pwd
-echo "📦 Listing structure:"
-ls -R
+echo "🏁 BuckDuit — Start Script (Stage 14.15)"
 
-# ==========================================================
-# 1️⃣ Auto-detect Flask app file
-# ==========================================================
-if [ -f "./app.py" ]; then
-  echo "✅ Found app.py at root"
-  APP_PATH="./app.py"
-elif [ -f "./backend/app.py" ]; then
-  echo "✅ Found backend/app.py"
-  APP_PATH="./backend/app.py"
-else
-  echo "❌ ERROR: app.py not found in root or backend"
-  ls
-  exit 1
-fi
+export PYTHONUNBUFFERED=1
 
-# ==========================================================
-# 2️⃣ Start Flask Backend
-# ==========================================================
-echo "🌐 Launching Flask from: $APP_PATH ..."
-python3 $APP_PATH &
+# --- sanity echo ---
+python --version || true
+pip --version || true
 
-# ==========================================================
-# 3️⃣ Start Heartbeat AI (optional)
-# ==========================================================
-if [ -f "./backend/workers/heartbeat_ai.py" ]; then
-  echo "🫀 Launching Heartbeat AI..."
-  python3 ./backend/workers/heartbeat_ai.py &
-else
-  echo "⚠️ Skipping Heartbeat AI (file not found)"
-fi
+# -------- Launch Flask (foreground) --------
+echo "🌐 Launching Flask..."
+# run the daemon in background *before* Flask so it can attach
+python -u supervisor_daemon.py &
 
-# ==========================================================
-# 4️⃣ Keep Container Alive
-# ==========================================================
-echo "♻️ Keepalive loop started..."
-while true; do
-  ps aux | grep "python3" | grep -v "grep" || echo "⚠️ Warning: No python process running!"
-  sleep 30
-done
+# (If you also run heartbeat worker separately, keep it here too)
+# python -u heartbeat_ai.py &   # <-- if you had this in Stage 14.13
+
+# Finally run Flask (foreground keeps container alive)
+python -u app.py
