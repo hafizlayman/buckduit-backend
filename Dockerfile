@@ -1,23 +1,31 @@
 # ======================================
-# BuckDuit Backend — Final Worker Path Map (Railway Verified)
+# 🚀 BuckDuit Backend — Stage 14.12.12
+# Hard Override Mode (ENTRYPOINT Fix)
 # ======================================
+
+# Base image
 FROM python:3.10-slim
 
+# Prevent Python from buffering stdout/stderr
+ENV PYTHONUNBUFFERED=1
+
+# Set working directory
 WORKDIR /app
 
-ENV PYTHONUNBUFFERED=1
-ENV PIP_NO_CACHE_DIR=1
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+# Copy all project files into container
+COPY . /app
 
-# Copy everything to /app (including backend + start_worker.sh)
-COPY . .
+# Install system dependencies (if any additional required)
+RUN apt-get update && apt-get install -y --no-install-recommends bash && rm -rf /var/lib/apt/lists/*
 
-# Upgrade and install dependencies
+# Install Python dependencies
 RUN pip install --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Ensure script permission
+# Make worker script executable
 RUN chmod +x /app/start_worker.sh
 
-# Run the worker startup script
-ENTRYPOINT ["bash", "/app/start_worker.sh"]
+# ===========================
+# ✅ Hard Override Entrypoint
+# ===========================
+ENTRYPOINT ["/bin/bash", "/app/start_worker.sh"]
