@@ -1,35 +1,35 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
-echo "🚀 BuckDuit — Railway Entrypoint Fix"
-PORT=${PORT:-5000}
+echo "🚀 BuckDuit — Universal Entrypoint (Stage 14.13.4)"
+echo "📂 Current Directory:"
+pwd
+echo "📦 Listing structure:"
+ls -R
 
-echo "🧠 Checking backend path..."
-if [ ! -d "backend" ]; then
-  echo "⚠️ Missing backend folder, creating soft link..."
-  mkdir -p backend
-  cp -r ./* backend/ || true
-fi
-
-echo "🌐 Launching Flask..."
-python3 backend/app.py &
-
-FLASK_PID=$!
-sleep 2
-
-if ps -p $FLASK_PID > /dev/null; then
-  echo "✅ Flask started successfully (PID: $FLASK_PID)"
+# Auto-detect backend/app.py path
+if [ -f "backend/app.py" ]; then
+  echo "✅ Found backend/app.py"
+  APP_PATH="backend/app.py"
+elif [ -f "app.py" ]; then
+  echo "✅ Found app.py at root"
+  APP_PATH="app.py"
 else
-  echo "❌ Flask failed to start."
+  echo "❌ ERROR: Could not find app.py"
   exit 1
 fi
 
-echo "🔁 Keepalive loop started..."
+echo "🌐 Launching Flask: $APP_PATH ..."
+python3 $APP_PATH &
+
+# Launch heartbeat if present
+if [ -f "backend/workers/heartbeat_ai.py" ]; then
+  echo "🫀 Launching Heartbeat AI..."
+  python3 backend/workers/heartbeat_ai.py &
+fi
+
+echo "✅ All services started. Entering keepalive..."
 while true; do
-  if ! ps -p $FLASK_PID > /dev/null; then
-    echo "💥 Flask exited. Restarting..."
-    python3 backend/app.py &
-    FLASK_PID=$!
-  fi
-  sleep 10
+  ps aux | grep "python3" | grep -v "grep"
+  sleep 30
 done
