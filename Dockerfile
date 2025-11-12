@@ -1,27 +1,22 @@
 # ==========================================================
-# BuckDuit Backend — Stage 14.13.4
-# (Absolute Build Path Fix + Auto-Heal Bootstrap)
+# BuckDuit Backend — Stage 14.13.6
+# Stable Root Entrypoint (100% Guarantee)
 # ==========================================================
 FROM python:3.10-slim
 
-# Set working directory inside container
+# Working directory inside container
 WORKDIR /app
 
-# Copy everything from local repo into /app/
-COPY . .
+# Copy everything from your repo
+COPY . /app
 
-# Install system dependencies
-RUN apt-get update -y && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
-
-# Install Python packages
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+# Install dependencies
+RUN apt-get update -y && apt-get install -y --no-install-recommends curl
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Give execution rights
 RUN chmod +x /app/start.sh
 
 # Expose Flask port
 EXPOSE 5000
 
-# Run app via start.sh
-CMD ["/bin/sh", "/app/start.sh"]
+# Start app
+CMD ["sh", "/app/start.sh"]
