@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "name": "High Confidence Fraud Detection",
+    "condition": "ai_confidence > 0.9 and category == 'fraud'",
+    "action": "flag",
+    "threshold": 0.9,
+    "enabled": true,
+    "description": "Flags any event categorized as fraud with >90% AI confidence"
+  },
+  {
+    "id": 2,
+    "name": "Low Confidence Suppression",
+    "condition": "ai_confidence < 0.5",
+    "action": "ignore",
+    "threshold": 0.5,
+    "enabled": true,
+    "description": "Ignores low-confidence signals to reduce noise"
+  },
+  {
+    "id": 3,
+    "name": "Consistent Success Reward",
+    "condition": "success_streak >= 5",
+    "action": "reward",
+    "threshold": 0.8,
+    "enabled": true,
+    "description": "Recognizes apps or offers with consistent successful results"
+  },
+  {
+    "id": 4,
+    "name": "Anomaly Escalation",
+    "condition": "anomaly_score >= 0.95",
+    "action": "escalate",
+    "threshold": 0.95,
+    "enabled": true,
+    "description": "Escalates severe anomaly cases to admin review"
+  }
+]

@@ -1,41 +1,44 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
-echo "==========================================="
-echo "🚀 Launching BuckDuit AI Core (Production)"
-echo "==========================================="
+ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$ROOT_DIR"
 
-# Verify working directory
-echo "📂 Current directory: $(pwd)"
+echo "🟢 start.sh: mode=${1:-web}"
 
-# Verify Python version
-python --version
-
-# Environment check
-if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_KEY" ]; then
-  echo "⚠️  Warning: Missing Supabase environment variables!"
-  echo "SUPABASE_URL=$SUPABASE_URL"
-  echo "SUPABASE_SERVICE_KEY (first 10 chars): ${SUPABASE_SERVICE_KEY:0:10}..."
+# pick env file for local; cloud will inject env vars
+if [[ -n "${APP_ENV:-}" ]]; then
+  case "${APP_ENV,,}" in
+    prod|production) ENV_FILE=".env.prod" ;;
+    stage|staging)   ENV_FILE=".env.stage" ;;
+    dev|development) ENV_FILE=".env.dev" ;;
+    *)               ENV_FILE=".env" ;;
+  esac
 else
-  echo "✅ Supabase variables detected."
+  for f in .env.prod .env.stage .env.dev .env; do
+    if [[ -f "$f" ]]; then ENV_FILE="$f"; break; fi
+  done
+fi
+echo "🗂  using env file ${ENV_FILE:-<none>}"
+if [[ -n "${ENV_FILE:-}" && -f "$ENV_FILE" ]]; then
+  export $(grep -v '^#' "$ENV_FILE" | xargs -I{} echo {})
 fi
 
-# Install dependencies
-echo "📦 Installing dependencies..."
-pip install --no-cache-dir -r requirements.txt
+export PORT="${PORT:-5000}"
+export FLASK_ENV="${FLASK_ENV:-production}"
 
-# Show all installed packages (optional debug)
-pip freeze | grep flask
-pip freeze | grep gunicorn
-pip freeze | grep supabase
-
-# Start Gunicorn server and bind to Railway port
-echo "🚀 Starting Gunicorn with buckduit_ai_core:app ..."
-exec gunicorn buckduit_ai_core:app \
-  --workers 2 \
-  --threads 2 \
-  --timeout 120 \
-  --bind 0.0.0.0:${PORT:-8080} \
-  --log-level info \
-  --access-logfile '-' \
-  --error-logfile '-'
+case "${1:-web}" in
+  web)
+    echo "🚀 API on :${PORT}"
+    exec gunicorn -w 2 -k gthread -t 120 --graceful-timeout 30 \
+      --bind 0.0.0.0:"${PORT}" app:app
+    ;;
+  worker)
+    echo "🛠  Worker bundle"
+    exec python services/workers/test_env_loader.py
+    ;;
+  *)
+    echo "❌ Use: web | worker"
+    exit 1
+    ;;
+esac

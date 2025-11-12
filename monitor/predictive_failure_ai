@@ -1,0 +1,152 @@
+import os, math, time, statistics
+from datetime import datetime, timedelta, timezone
+from typing import Dict, List, Tuple
+from supabase import create_client, Client
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+sb: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+RISK_ALERT_THRESHOLD = float(os.getenv("PRED_RISK_ALERT_THRESHOLD", "75"))
+DEFAULT_HORIZON = int(os.getenv("PRED_DEFAULT_HORIZON_MIN", "60"))
+ENABLE_AUTO_HEAL = os.getenv("ENABLE_AUTO_HEAL_ON_PREDICT", "false").lower() == "true"
+
+def _parse_pairs(env: str) -> List[Tuple[str,str]]:
+    """
+    'backend:api_latency_ms,backend:error_rate' -> [('backend','api_latency_ms'), ...]
+    """
+    out = []
+    for chunk in (env or "").split(","):
+        if not chunk.strip(): 
+            continue
+        if ":" in chunk:
+            s,m = chunk.split(":",1)
+            out.append((s.strip(), m.strip()))
+    return out
+
+TRACKED = _parse_pairs(os.getenv("PRED_METRICS", ""))
+
+def _fetch_series(service: str, metric: str, hrs: int = 24) -> List[float]:
+    since = datetime.now(timezone.utc) - timedelta(hours=hrs)
+    res = sb.table("predictive_metrics") \
+        .select("value, created_at") \
+        .eq("service", service) \
+        .eq("metric", metric) \
+        .gte("created_at", since.isoformat()) \
+        .order("created_at", desc=False) \
+        .execute()
+    rows = res.data or []
+    return [float(r["value"]) for r in rows]
+
+def _ema(series: List[float], alpha: float = 0.3) -> float:
+    if not series: 
+        return 0.0
+    ema = series[0]
+    for x in series[1:]:
+        ema = alpha * x + (1 - alpha) * ema
+    return ema
+
+def _z_score(series: List[float]) -> float:
+    # how extreme latest value vs history
+    if len(series) < 6:
+        return 0.0
+    mu = statistics.mean(series[:-1])
+    sd = statistics.pstdev(series[:-1]) or 1e-6
+    return (series[-1] - mu) / sd
+
+def _trend(series: List[float]) -> float:
+    # simple AR(1)-ish “drift” using last-to-EMA delta (normalized)
+    if len(series) < 4:
+        return 0.0
+    last = series[-1]
+    ema = _ema(series, 0.2)
+    denom = (abs(ema) + 1e-6)
+    return 100.0 * (last - ema) / denom
+
+def _risk_fusion(z: float, trend: float, ema_now: float, horizon_min: int) -> float:
+    """
+    Combine signals into 0..100 risk.
+    - z: 0..∞ (cap to 5)
+    - trend: ~ percentage drift
+    - ema: magnitude proxy
+    """
+    zc = min(max(z, 0.0), 5.0) / 5.0            # 0..1
+    tr = max(min(trend / 50.0, 1.0), -1.0)      # -1..1
+    trp = max(tr, 0.0)                          # upward drift = risk
+    mag = 1.0 if ema_now > 0 else 0.0
+    base = (0.6*zc + 0.3*trp + 0.1*mag)         # 0..1
+    # longer horizon slightly increases risk sensitivity
+    adj = min(1.25, 1.0 + (horizon_min/120.0))
+    return round(100.0 * base * adj, 1)
+
+def _label(score: float) -> str:
+    if score >= 90: return "CRITICAL"
+    if score >= 75: return "HIGH"
+    if score >= 50: return "MEDIUM"
+    return "LOW"
+
+def forecast_for(service: str, metric: str, horizon_min: int = DEFAULT_HORIZON) -> Dict:
+    series = _fetch_series(service, metric, hrs=24)
+    if not series:
+        return dict(service=service, metric=metric, horizon_min=horizon_min,
+                    risk_score=0.0, label="LOW",
+                    explanation={"reason":"no data"})
+    z = _z_score(series)
+    tr = _trend(series)
+    ema_now = _ema(series)
+    risk = _risk_fusion(z, tr, ema_now, horizon_min)
+    out = {
+        "horizon_min": horizon_min,
+        "service": service,
+        "metric": metric,
+        "risk_score": risk,
+        "label": _label(risk),
+        "explanation": {
+            "z": round(z,2),
+            "trend": round(tr,2),
+            "ema": round(ema_now,2),
+            "points": len(series)
+        }
+    }
+    return out
+
+def persist_forecast(f: Dict):
+    sb.table("predictive_forecasts").insert({
+        "horizon_min": f["horizon_min"],
+        "service": f["service"],
+        "metric": f["metric"],
+        "risk_score": f["risk_score"],
+        "label": f["label"],
+        "explanation": f["explanation"]
+    }).execute()
+
+def maybe_auto_heal(f: Dict):
+    if not ENABLE_AUTO_HEAL:
+        return
+    if f["risk_score"] < RISK_ALERT_THRESHOLD:
+        return
+    # log a system log entry (your existing logger picks this up)
+    try:
+        sb.table("system_logs").insert({
+            "severity": "WARNING",
+            "source": "AI_PREDICT",
+            "message": f'Predicted {f["label"]} risk for {f["service"]}:{f["metric"]} in {f["horizon_min"]}m (score={f["risk_score"]}). Auto-heal queued.'
+        }).execute()
+    except Exception:
+        pass
+    # call your self-healer orchestrator (already in repo)
+    try:
+        from monitor.self_healing_orchestrator import queue_auto_heal
+        queue_auto_heal(reason="predictive-risk", context=f)
+    except Exception:
+        # best-effort
+        pass
+
+def run_batch(horizon_min: int = DEFAULT_HORIZON) -> List[Dict]:
+    outputs = []
+    for svc, met in TRACKED:
+        f = forecast_for(svc, met, horizon_min=horizon_min)
+        persist_forecast(f)
+        maybe_auto_heal(f)
+        outputs.append(f)
+    return outputs

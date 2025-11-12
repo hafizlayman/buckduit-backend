@@ -1,11 +1,12 @@
-# =========================================
 # backend/render.yaml
-# Stage 14.11 — Web-Only API Deployment (Render)
 # =========================================
-# Deploys only the Flask backend (no worker yet)
+# Stage 14.12 — Web + Worker (Render)
 # =========================================
 
 services:
+  # -------------------------------
+  # 🖥️ Web API (Flask + Gunicorn)
+  # -------------------------------
   - type: web
     name: buckduit-web
     env: python
@@ -16,10 +17,7 @@ services:
       pip install -r requirements.txt
     startCommand: gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT app:app
     healthCheckPath: /api/system/health
-    autoDeploy: true
-
     envVars:
-      # ---- App ----
       - key: PORT
         value: "5000"
       - key: FLASK_ENV
@@ -27,48 +25,64 @@ services:
       - key: APP_ENV
         value: "prod"
       - key: APP_MODE
-        value: "real"
-      - key: DEBUG
-        value: "false"
+        value: "mock"          # switch to "real" when your pipeline is ready
       - key: AUTO_START_WORKER
         value: "false"
-
-      # ---- Supabase ----
+      - key: CORS_ORIGINS
+        value: "https://your-frontend.onrender.com,http://localhost:5173"
       - key: SUPABASE_URL
         value: "https://lpdrdtjtowfhxujenewm.supabase.co"
       - key: SUPABASE_SERVICE_KEY
-        value: "your_service_key_here"
+        sync: false
       - key: SUPABASE_ANON_KEY
-        value: "your_anon_key_here"
-
-      # ---- Telegram (optional) ----
-      - key: TELEGRAM_BOT_TOKEN
-        value: ""
-      - key: TELEGRAM_CHAT_ID
-        value: ""
-
-      # ---- Predictive defaults ----
-      - key: REAL_SMOOTH_ALPHA
-        value: "0.35"
-      - key: BIAS_THRESHOLD
-        value: "0.12"
-
-      # ---- CORS ----
-      - key: CORS_ORIGINS
-        value: "https://your-frontend.onrender.com,http://localhost:5173"
-
-      # ---- Sync/Health ----
+        sync: false
       - key: SYNC_SCOPE
         value: "default"
+      - key: SYNC_INTERVAL_SECONDS
+        value: "60"
+      - key: SYNC_STATUS_TABLE
+        value: "sync_status"
+      - key: SYNC_DELTAS_TABLE
+        value: "sync_deltas"
       - key: SYNC_HEALTH_GREEN
         value: "120"
       - key: SYNC_HEALTH_YELLOW
         value: "300"
-
-      # ---- Optional Mirror ----
       - key: ENABLE_ALERT_MIRROR
         value: "true"
       - key: MIRROR_SHARED_SECRET
-        value: ""
+        sync: false
       - key: SECRET_KEY
-        value: ""
+        sync: false
+
+  # -------------------------------
+  # ⚙️ Background Worker
+  # -------------------------------
+  - type: worker
+    name: buckduit-sync-worker
+    env: python
+    plan: free
+    region: singapore
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    startCommand: bash start_worker.sh
+    envVars:
+      - key: APP_ENV
+        value: "prod"
+      - key: APP_MODE
+        value: "mock"
+      - key: SYNC_SCOPE
+        value: "default"
+      - key: SYNC_INTERVAL_SECONDS
+        value: "60"
+      - key: WATCHDOG_INTERVAL_SECONDS
+        value: "120"
+      - key: BIAS_THRESHOLD
+        value: "0.12"
+      - key: SUPABASE_URL
+        value: "https://lpdrdtjtowfhxujenewm.supabase.co"
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: PYTHONUNBUFFERED
+        value: "1"

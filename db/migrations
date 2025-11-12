@@ -1,0 +1,69 @@
+-- Stage 13.78 — Auto-Threshold Tuning + Risk Decay
+-- Idempotent where possible; re-runs won’t break.
+
+
+-- 1) Metric thresholds per metric (current effective thresholds)
+create table if not exists metric_thresholds (
+id bigserial primary key,
+metric text not null,
+warn_threshold double precision not null,
+crit_threshold double precision not null,
+tuned_at timestamptz not null default now(),
+method text not null default 'MAD',
+override boolean not null default false,
+created_at timestamptz not null default now()
+);
+create unique index if not exists idx_metric_thresholds_metric on metric_thresholds(metric);
+
+
+-- 2) History of metrics (if you already have a table for raw metrics, skip)
+-- Minimal schema used by the tuner. Replace with your existing if present.
+create table if not exists metric_history (
+id bigserial primary key,
+metric text not null,
+value double precision not null,
+observed_at timestamptz not null default now()
+);
+create index if not exists idx_metric_history_metric_time on metric_history(metric, observed_at desc);
+
+
+-- 3) Risk scores per incident/entity
+create table if not exists incident_risk (
+id bigserial primary key,
+incident_key text not null, -- e.g. 'alerts:api_error_rate'
+risk_score double precision not null default 0,
+last_update timestamptz not null default now(),
+status text not null default 'open', -- open|cooldown|closed
+meta jsonb not null default '{}'::jsonb
+);
+create unique index if not exists idx_incident_risk_key on incident_risk(incident_key);
+
+
+-- 4) Optional: policy table for clamps (editable in SQL)
+create table if not exists risk_policies (
+id bigserial primary key,
+metric text not null unique,
+min_warn double precision,
+max_warn double precision,
+min_crit double precision,
+max_crit double precision,
+lower_floor double precision, -- e.g., do not tune warn/crit below this absolute baseline
+upper_cap double precision -- absolute cap
+);
+
+
+-- 5) RLS (example — adjust to your project model; service key bypasses RLS)
+-- If you already enforce RLS, add policies accordingly. Here we keep unrestricted for service role.
+alter table metric_thresholds enable row level security;
+alter table metric_history enable row level security;
+alter table incident_risk enable row level security;
+alter table risk_policies enable row level security;
+
+
+-- For anon read (frontend) of current thresholds only — OPTIONAL
+create policy if not exists metric_thresholds_read_anon on metric_thresholds
+for select using (true);
+
+
+-- For anon read of scorecard (if you’ll expose via rpc or view) — OPTIONAL
+-- Prefer serving through Flask API with service key on backend.
