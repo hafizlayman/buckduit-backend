@@ -1,5 +1,5 @@
 # ======================================
-# BuckDuit Backend — Final Worker Entrypoint Fix
+# BuckDuit Backend — Final Worker Path Map (Railway Verified)
 # ======================================
 FROM python:3.10-slim
 
@@ -9,15 +9,15 @@ ENV PYTHONUNBUFFERED=1
 ENV PIP_NO_CACHE_DIR=1
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Copy all files
+# Copy everything to /app (including backend + start_worker.sh)
 COPY . .
 
-# Upgrade pip and dependencies
+# Upgrade and install dependencies
 RUN pip install --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Ensure script is executable
+# Ensure script permission
 RUN chmod +x /app/start_worker.sh
 
-# Start worker script directly from root
-CMD ["bash", "/app/start_worker.sh"]
+# Run the worker startup script
+ENTRYPOINT ["bash", "/app/start_worker.sh"]
